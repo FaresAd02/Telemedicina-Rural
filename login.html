@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login - Telemedicina</title>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .login-container {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      position: relative;
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .login-header h1 {
+      font-size: 1.8em;
+      color: #444;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      font-weight: 500;
+      margin-bottom: 6px;
+      display: block;
+      color: #333;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1.8px solid #ccc;
+      border-radius: 8px;
+      font-size: 15px;
+      transition: 0.3s ease all;
+    }
+
+    input:focus {
+      border-color: #667eea;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    input.error {
+      border-color: #e57373;
+    }
+
+    input:disabled {
+      background-color: #f5f5f5;
+      cursor: not-allowed;
+    }
+
+    .btn {
+      width: 48%;
+      padding: 12px;
+      font-size: 15px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.3s ease;
+      position: relative;
+    }
+
+    .btn:first-child {
+      background-color: #667eea;
+      color: white;
+    }
+
+    .btn:last-child {
+      background-color: #dee2e6;
+      color: #333;
+    }
+
+    .btn:hover:not(:disabled) {
+      opacity: 0.9;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn .spinner {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 2px solid transparent;
+      border-top: 2px solid white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+
+    .btn.loading .spinner {
+      display: inline-block;
+    }
+
+    .btn.loading .btn-text {
+      display: none;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .message {
+      text-align: center;
+      margin-top: 15px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      height: 20px;
+    }
+
+    .message.show {
+      opacity: 1;
+    }
+
+    .error-message {
+      color: #b94a48;
+    }
+
+    .success-message {
+      color: #3c763d;
+    }
+
+    .warning-message {
+      color: #f57c00;
+    }
+
+    .login-mode-toggle {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .mode-btn {
+      background: none;
+      border: 1px solid #667eea;
+      color: #667eea;
+      padding: 8px 16px;
+      margin: 0 5px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: 0.3s ease;
+    }
+
+    .mode-btn.active {
+      background: #667eea;
+      color: white;
+    }
+
+    .mode-btn:hover {
+      background: #667eea;
+      color: white;
+    }
+
+    .connection-status {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 12px;
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+    }
+
+    .status-online {
+      background: #d4edda;
+      color: #155724;
+      border-color: #c3e6cb;
+    }
+
+    .status-offline {
+      background: #f8d7da;
+      color: #721c24;
+      border-color: #f5c6cb;
+    }
+
+    .status-demo {
+      background: #e2e3f3;
+      color: #383d41;
+      border-color: #d6d8db;
+    }
+
+    .forgot-password {
+      text-align: center;
+      margin-top: 15px;
+    }
+
+    .forgot-password a {
+      color: #667eea;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .forgot-password a:hover {
+      text-decoration: underline;
+    }
+
+    .divider {
+      text-align: center;
+      margin: 20px 0;
+      position: relative;
+    }
+
+    .divider::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: #dee2e6;
+    }
+
+    .divider span {
+      background: white;
+      padding: 0 15px;
+      color: #666;
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="login-container">
+    <div class="connection-status" id="connectionStatus">
+      🔄 Conectando...
+    </div>
+
+    <div class="login-header">
+      <h1>🏥 Telemedicina Rural</h1>
+      <p class="subtitle">Sistema de consultas médicas remotas</p>
+    </div>
+
+    <!-- Toggle de modo de login -->
+    <div class="login-mode-toggle">
+      <button type="button" class="mode-btn active" id="firebaseMode">🔥 Firebase</button>
+      <button type="button" class="mode-btn" id="demoMode">🎭 Demo</button>
+    </div>
+
+    <form id="loginForm" novalidate>
+      <div class="form-group">
+        <label for="email">Email / Usuario</label>
+        <input type="email" id="email" placeholder="doctor@hospital.com" required />
+      </div>
+      <div class="form-group">
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" placeholder="Ingrese su contraseña" required />
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <button type="submit" class="btn" id="loginBtn">
+          <div class="spinner"></div>
+          <span class="btn-text">Iniciar Sesión</span>
+        </button>
+        <button type="button" id="btnClear" class="btn">Limpiar</button>
+      </div>
+
+      <div class="divider">
+        <span>o</span>
+      </div>
+
+      <div style="display: flex; justify-content: space-between;">
+        <button type="button" class="btn" id="registerBtn" style="width: 48%; background: #28a745;">
+          <span class="btn-text">Registrarse</span>
+        </button>
+        <button type="button" class="btn" id="guestBtn" style="width: 48%; background: #6c757d;">
+          <span class="btn-text">Modo Invitado</span>
+        </button>
+      </div>
+
+      <div class="forgot-password">
+        <a href="#" id="forgotPasswordLink">¿Olvidaste tu contraseña?</a>
+      </div>
+
+      <div class="message error-message" id="errorMessage"></div>
+      <div class="message success-message" id="successMessage"></div>
+      <div class="message warning-message" id="warningMessage"></div>
+    </form>
+  </div>
+
+  <script>
+    // ⚠️ IMPORTANTE: Reemplaza con tu configuración real de Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyB25RJkWpFOxihefSN8G8BgjBkp1DaJgCo",
+      authDomain: "telemedicina-rural.firebaseapp.com",
+      databaseURL: "https://telemedicina-rural-default-rtdb.firebaseio.com",
+      projectId: "telemedicina-rural",
+      storageBucket: "telemedicina-rural.firebasestorage.app",
+      messagingSenderId: "545941808760",
+      appId: "1:545941808760:web:312ca5a2d010a8d9a1ef8d",
+      measurementId: "G-M5LBNG6G21"
+    };
+
+    // Variables globales
+    let auth, db;
+    let firebaseInitialized = false;
+    let isOnline = navigator.onLine;
+    let loginMode = 'firebase'; // 'firebase' o 'demo'
+
+    // Elementos del DOM
+    const loginForm = document.getElementById("loginForm");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const registerBtn = document.getElementById("registerBtn");
+    const guestBtn = document.getElementById("guestBtn");
+    const btnClear = document.getElementById("btnClear");
+    const forgotPasswordLink = document.getElementById("forgotPasswordLink");
+    const connectionStatus = document.getElementById("connectionStatus");
+    const errorMessage = document.getElementById("errorMessage");
+    const successMessage = document.getElementById("successMessage");
+    const warningMessage = document.getElementById("warningMessage");
+    const firebaseModeBtn = document.getElementById("firebaseMode");
+    const demoModeBtn = document.getElementById("demoMode");
+
+    // Usuarios demo predefinidos
+    const demoUsers = {
+      'admin': { password: '1234', role: 'admin', name: 'Administrador' },
+      'doctor': { password: 'doctor123', role: 'doctor', name: 'Dr. García' },
+      'nurse': { password: 'nurse123', role: 'nurse', name: 'Enfermera López' },
+      'demo': { password: 'demo', role: 'guest', name: 'Usuario Demo' }
+    };
+
+    // Inicialización de Firebase
+    async function initializeFirebase() {
+      if (firebaseInitialized) return true;
+
+      try {
+        console.log('🔥 Inicializando Firebase Auth...');
+
+        // Verificar que Firebase esté cargado
+        if (typeof firebase === 'undefined') {
+          throw new Error('Firebase SDK no está cargado');
+        }
+
+        // Verificar configuración
+        if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('tu-')) {
+          throw new Error('Configuración de Firebase no válida');
+        }
+
+        // Inicializar Firebase
+        if (firebase.apps.length === 0) {
+          firebase.initializeApp(firebaseConfig);
+        }
+
+        auth = firebase.auth();
+        db = firebase.firestore();
+
+        // Configurar persistencia
+        await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+        // Test de conexión
+        await auth.signInAnonymously();
+        await auth.signOut();
+
+        firebaseInitialized = true;
+        console.log('✅ Firebase Auth inicializado correctamente');
+        return true;
+
+      } catch (error) {
+        console.error('❌ Error inicializando Firebase Auth:', error);
+        return false;
+      }
+    }
+
+    // Funciones de utilidad
+    function showMessage(message, type = 'error', duration = 4000) {
+      hideAllMessages();
+
+      let messageEl;
+      switch (type) {
+        case 'success':
+          messageEl = successMessage;
+          break;
+        case 'warning':
+          messageEl = warningMessage;
+          break;
+        default:
+          messageEl = errorMessage;
+      }
+
+      messageEl.textContent = message;
+      messageEl.classList.add('show');
+
+      if (duration > 0) {
+        setTimeout(() => messageEl.classList.remove('show'), duration);
+      }
+    }
+
+    function hideAllMessages() {
+      errorMessage.classList.remove('show');
+      successMessage.classList.remove('show');
+      warningMessage.classList.remove('show');
+    }
+
+    function setLoading(isLoading) {
+      const inputs = [emailInput, passwordInput];
+      const buttons = [loginBtn, registerBtn, guestBtn, btnClear];
+
+      inputs.forEach(input => input.disabled = isLoading);
+      buttons.forEach(button => button.disabled = isLoading);
+
+      if (isLoading) {
+        loginBtn.classList.add('loading');
+      } else {
+        loginBtn.classList.remove('loading');
+      }
+    }
+
+    function clearInputErrors() {
+      emailInput.classList.remove('error');
+      passwordInput.classList.remove('error');
+    }
+
+    function updateConnectionStatus() {
+      if (loginMode === 'demo') {
+        connectionStatus.textContent = '🎭 Modo Demo';
+        connectionStatus.className = 'connection-status status-demo';
+      } else if (isOnline && firebaseInitialized) {
+        connectionStatus.textContent = '🔥 Firebase';
+        connectionStatus.className = 'connection-status status-online';
+      } else if (isOnline) {
+        connectionStatus.textContent = '⚠️ Error Firebase';
+        connectionStatus.className = 'connection-status status-offline';
+      } else {
+        connectionStatus.textContent = '📱 Sin conexión';
+        connectionStatus.className = 'connection-status status-offline';
+      }
+    }
+
+    // Funciones de autenticación
+    async function loginWithFirebase(email, password) {
+      if (!firebaseInitialized) {
+        throw new Error('Firebase no está inicializado');
+      }
+
+      try {
+        console.log('🔐 Iniciando sesión con Firebase...');
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        // Obtener información adicional del usuario desde Firestore
+        let userData = {
+          uid: user.uid,
+          email: user.email,
+          name: user.displayName || 'Usuario',
+          role: 'user'
+        };
+
+        try {
+          const userDoc = await db.collection('users').doc(user.uid).get();
+          if (userDoc.exists) {
+            userData = { ...userData, ...userDoc.data() };
+          }
+        } catch (error) {
+          console.warn('⚠️ No se pudo obtener datos adicionales del usuario:', error);
+        }
+
+        // Guardar sesión
+        localStorage.setItem('userSession', JSON.stringify({
+          ...userData,
+          loginTime: new Date().toISOString(),
+          loginMethod: 'firebase'
+        }));
+
+        console.log('✅ Login exitoso con Firebase');
+        return userData;
+
+      } catch (error) {
+        console.error('❌ Error en login con Firebase:', error);
+
+        // Mensajes de error más amigables
+        let errorMsg = 'Error de autenticación';
+        switch (error.code) {
+          case 'auth/user-not-found':
+            errorMsg = 'Usuario no encontrado';
+            break;
+          case 'auth/wrong-password':
+            errorMsg = 'Contraseña incorrecta';
+            break;
+          case 'auth/invalid-email':
+            errorMsg = 'Email inválido';
+            break;
+          case 'auth/too-many-requests':
+            errorMsg = 'Demasiados intentos. Intenta más tarde';
+            break;
+          case 'auth/network-request-failed':
+            errorMsg = 'Error de conexión';
+            break;
+          default:
+            errorMsg = error.message || 'Error desconocido';
+        }
+
+        throw new Error(errorMsg);
+      }
+    }
+
+    function loginWithDemo(username, password) {
+      console.log('🎭 Iniciando sesión en modo demo...');
+
+      const user = demoUsers[username.toLowerCase()];
+      if (!user || user.password !== password) {
+        throw new Error('Usuario o contraseña incorrectos');
+      }
+
+      const userData = {
+        uid: `demo_${username}`,
+        email: `${username}@demo.local`,
+        name: user.name,
+        role: user.role,
+        isDemo: true
+      };
+
+      // Guardar sesión demo
+      localStorage.setItem('userSession', JSON.stringify({
+        ...userData,
+        loginTime: new Date().toISOString(),
+        loginMethod: 'demo'
+      }));
+
+      console.log('✅ Login exitoso en modo demo');
+      return userData;
+    }
+
+    async function registerWithFirebase(email, password) {
+      if (!firebaseInitialized) {
+        throw new Error('Firebase no está inicializado');
+      }
+
+      try {
+        console.log('📝 Registrando usuario con Firebase...');
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        // Crear documento de usuario en Firestore
+        const userData = {
+          uid: user.uid,
+          email: user.email,
+          name: user.displayName || 'Nuevo Usuario',
+          role: 'user',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection('users').doc(user.uid).set(userData);
+
+        console.log('✅ Usuario registrado exitosamente');
+        return userData;
+
+      } catch (error) {
+        console.error('❌ Error registrando usuario:', error);
+
+        let errorMsg = 'Error en el registro';
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            errorMsg = 'Este email ya está registrado';
+            break;
+          case 'auth/weak-password':
+            errorMsg = 'La contraseña debe tener al menos 6 caracteres';
+            break;
+          case 'auth/invalid-email':
+            errorMsg = 'Email inválido';
+            break;
+          default:
+            errorMsg = error.message || 'Error desconocido';
+        }
+
+        throw new Error(errorMsg);
+      }
+    }
+
+    async function resetPassword(email) {
+      if (!firebaseInitialized) {
+        throw new Error('Firebase no está inicializado');
+      }
+
+      try {
+        await auth.sendPasswordResetEmail(email);
+        return true;
+      } catch (error) {
+        console.error('❌ Error enviando reset de contraseña:', error);
+        throw new Error('No se pudo enviar el email de recuperación');
+      }
+    }
+
+    function redirectToDashboard() {
+      showMessage('✅ Inicio de sesión exitoso. Redirigiendo...', 'success', 0);
+      setTimeout(() => {
+        window.location.href = 'dashboard.html';
+      }, 1500);
+    }
+
+    // Event Listeners
+    loginForm.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      hideAllMessages();
+      clearInputErrors();
+
+      // Validación básica
+      if (!email || !password) {
+        showMessage('Por favor, complete todos los campos');
+        if (!email) emailInput.classList.add('error');
+        if (!password) passwordInput.classList.add('error');
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        let userData;
+
+        if (loginMode === 'firebase') {
+          userData = await loginWithFirebase(email, password);
+        } else {
+          userData = loginWithDemo(email, password);
+        }
+
+        console.log('👤 Usuario autenticado:', userData);
+        redirectToDashboard();
+
+      } catch (error) {
+        console.error('❌ Error en login:', error);
+        showMessage(error.message);
+        emailInput.classList.add('error');
+        passwordInput.classList.add('error');
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    registerBtn.addEventListener("click", async function () {
+      if (loginMode === 'demo') {
+        showMessage('El registro no está disponible en modo demo', 'warning');
+        return;
+      }
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!email || !password) {
+        showMessage('Complete email y contraseña para registrarse');
+        return;
+      }
+
+      if (password.length < 6) {
+        showMessage('La contraseña debe tener al menos 6 caracteres');
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const userData = await registerWithFirebase(email, password);
+        showMessage('✅ Usuario registrado exitosamente. Iniciando sesión...', 'success');
+
+        setTimeout(() => {
+          redirectToDashboard();
+        }, 2000);
+
+      } catch (error) {
+        showMessage(error.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    guestBtn.addEventListener("click", function () {
+      // Login como invitado
+      const guestData = {
+        uid: 'guest_' + Date.now(),
+        email: 'guest@demo.local',
+        name: 'Usuario Invitado',
+        role: 'guest',
+        isGuest: true
+      };
+
+      localStorage.setItem('userSession', JSON.stringify({
+        ...guestData,
+        loginTime: new Date().toISOString(),
+        loginMethod: 'guest'
+      }));
+
+      showMessage('✅ Accediendo como invitado...', 'success');
+      setTimeout(() => {
+        window.location.href = 'dashboard.html';
+      }, 1000);
+    });
+
+    btnClear.addEventListener("click", function () {
+      loginForm.reset();
+      hideAllMessages();
+      clearInputErrors();
+    });
+
+    forgotPasswordLink.addEventListener("click", async function (e) {
+      e.preventDefault();
+
+      if (loginMode === 'demo') {
+        alert('Usuarios demo:\n\n' +
+          '• admin / 1234\n' +
+          '• doctor / doctor123\n' +
+          '• nurse / nurse123\n' +
+          '• demo / demo');
+        return;
+      }
+
+      const email = emailInput.value.trim();
+      if (!email) {
+        showMessage('Ingrese su email para recuperar la contraseña');
+        emailInput.focus();
+        return;
+      }
+
+      try {
+        await resetPassword(email);
+        showMessage('✅ Se envió un email de recuperación', 'success');
+      } catch (error) {
+        showMessage(error.message);
+      }
+    });
+
+    // Toggle de modo
+    firebaseModeBtn.addEventListener("click", function () {
+      loginMode = 'firebase';
+      firebaseModeBtn.classList.add('active');
+      demoModeBtn.classList.remove('active');
+      emailInput.type = 'email';
+      emailInput.placeholder = 'doctor@hospital.com';
+      updateConnectionStatus();
+    });
+
+    demoModeBtn.addEventListener("click", function () {
+      loginMode = 'demo';
+      demoModeBtn.classList.add('active');
+      firebaseModeBtn.classList.remove('active');
+      emailInput.type = 'text';
+      emailInput.placeholder = 'admin, doctor, nurse, demo';
+      updateConnectionStatus();
+      showMessage('Modo demo: admin/1234, doctor/doctor123, nurse/nurse123, demo/demo', 'warning', 8000);
+    });
+
+    // Event listeners de conectividad
+    window.addEventListener('online', function () {
+      isOnline = true;
+      updateConnectionStatus();
+
+      if (loginMode === 'firebase' && !firebaseInitialized) {
+        setTimeout(initializeFirebase, 1000);
+      }
+    });
+
+    window.addEventListener('offline', function () {
+      isOnline = false;
+      updateConnectionStatus();
+    });
+
+    // Verificar si ya hay una sesión activa
+    function checkExistingSession() {
+      const session = localStorage.getItem('userSession');
+      if (session) {
+        try {
+          const userData = JSON.parse(session);
+          const loginTime = new Date(userData.loginTime);
+          const now = new Date();
+          const hoursSinceLogin = (now - loginTime) / (1000 * 60 * 60);
+
+          // Sesión válida por 24 horas
+          if (hoursSinceLogin < 24) {
+            showMessage('Ya tienes una sesión activa. Redirigiendo...', 'success');
+            setTimeout(() => {
+              window.location.href = 'dashboard.html';
+            }, 1500);
+            return;
+          } else {
+            localStorage.removeItem('userSession');
+          }
+        } catch (error) {
+          localStorage.removeItem('userSession');
+        }
+      }
+    }
+
+    // Inicialización
+    document.addEventListener('DOMContentLoaded', async function () {
+      console.log('🚀 Iniciando sistema de login...');
+
+      // Verificar sesión existente
+      checkExistingSession();
+
+      // Actualizar estado inicial
+      updateConnectionStatus();
+
+      // Intentar inicializar Firebase
+      if (loginMode === 'firebase') {
+        const connected = await initializeFirebase();
+        updateConnectionStatus();
+
+        if (!connected) {
+          showMessage('⚠️ Error conectando a Firebase - disponible modo demo', 'warning', 6000);
+        }
+      }
+
+      console.log('✅ Sistema de login inicializado');
+    });
+
+    // Función de debug global
+    window.debugLogin = function () {
+      console.log('=== LOGIN DEBUG ===');
+      console.log('Login mode:', loginMode);
+      console.log('Firebase initialized:', firebaseInitialized);
+      console.log('Online:', isOnline);
+      console.log('Demo users:', Object.keys(demoUsers));
+
+      if (auth) {
+        console.log('Current user:', auth.currentUser);
+      }
+    };
+  </script>
+</body>
+
+</html>
