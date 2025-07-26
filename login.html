@@ -6,10 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Login - Telemedicina</title>
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <!-- Firebase SDK - Versión más estable -->
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
 
   <style>
     * {
@@ -267,6 +267,23 @@
       color: #666;
       font-size: 12px;
     }
+
+    .debug-info {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      max-width: 300px;
+      display: none;
+    }
+
+    .debug-info.show {
+      display: block;
+    }
   </style>
 </head>
 
@@ -283,14 +300,14 @@
 
     <!-- Toggle de modo de login -->
     <div class="login-mode-toggle">
-      <button type="button" class="mode-btn active" id="firebaseMode">🔥 Firebase</button>
-      <button type="button" class="mode-btn" id="demoMode">🎭 Demo</button>
+      <button type="button" class="mode-btn" id="firebaseMode">🔥 Firebase</button>
+      <button type="button" class="mode-btn active" id="demoMode">🎭 Demo</button>
     </div>
 
     <form id="loginForm" novalidate>
       <div class="form-group">
         <label for="email">Email / Usuario</label>
-        <input type="email" id="email" placeholder="doctor@hospital.com" required />
+        <input type="text" id="email" placeholder="admin, doctor, nurse, demo" required />
       </div>
       <div class="form-group">
         <label for="password">Contraseña</label>
@@ -327,8 +344,14 @@
     </form>
   </div>
 
+  <!-- Debug info panel -->
+  <div class="debug-info" id="debugInfo">
+    <div id="debugContent"></div>
+    <button onclick="toggleDebug()" style="margin-top: 5px; padding: 2px 8px; font-size: 10px;">Cerrar</button>
+  </div>
+
   <script>
-    // ⚠️ IMPORTANTE: Reemplaza con tu configuración real de Firebase
+    // ⚠️ IMPORTANTE: Configuración de Firebase (debes usar la tuya)
     const firebaseConfig = {
       apiKey: "AIzaSyB25RJkWpFOxihefSN8G8BgjBkp1DaJgCo",
       authDomain: "telemedicina-rural.firebaseapp.com",
@@ -343,8 +366,9 @@
     // Variables globales
     let auth, db;
     let firebaseInitialized = false;
+    let firebaseError = null;
     let isOnline = navigator.onLine;
-    let loginMode = 'firebase'; // 'firebase' o 'demo'
+    let loginMode = 'demo'; // Empezar en modo demo por defecto
 
     // Elementos del DOM
     const loginForm = document.getElementById("loginForm");
@@ -361,6 +385,8 @@
     const warningMessage = document.getElementById("warningMessage");
     const firebaseModeBtn = document.getElementById("firebaseMode");
     const demoModeBtn = document.getElementById("demoMode");
+    const debugInfo = document.getElementById("debugInfo");
+    const debugContent = document.getElementById("debugContent");
 
     // Usuarios demo predefinidos
     const demoUsers = {
@@ -370,44 +396,125 @@
       'demo': { password: 'demo', role: 'guest', name: 'Usuario Demo' }
     };
 
-    // Inicialización de Firebase
+    // Función de debug
+    function logDebug(message, data = null) {
+      const timestamp = new Date().toLocaleTimeString();
+      console.log(`[${timestamp}] ${message}`, data);
+
+      if (debugContent) {
+        const logEntry = document.createElement('div');
+        logEntry.innerHTML = `<small>${timestamp}</small> ${message}`;
+        debugContent.appendChild(logEntry);
+        debugContent.scrollTop = debugContent.scrollHeight;
+      }
+    }
+
+    function toggleDebug() {
+      debugInfo.classList.toggle('show');
+    }
+
+    // Doble clic en el título para mostrar debug
+    document.querySelector('.login-header h1').addEventListener('dblclick', toggleDebug);
+
+    // Verificación de Firebase mejorada
+    function checkFirebaseSDK() {
+      logDebug('🔍 Verificando Firebase SDK...');
+
+      if (typeof firebase === 'undefined') {
+        logDebug('❌ Firebase SDK no está cargado');
+        return false;
+      }
+
+      if (!firebase.auth || !firebase.firestore) {
+        logDebug('❌ Módulos de Firebase faltantes');
+        return false;
+      }
+
+      logDebug('✅ Firebase SDK disponible');
+      return true;
+    }
+
+    // Inicialización de Firebase con mejor manejo de errores
     async function initializeFirebase() {
-      if (firebaseInitialized) return true;
+      if (firebaseInitialized) {
+        logDebug('⚠️ Firebase ya está inicializado');
+        return true;
+      }
 
       try {
-        console.log('🔥 Inicializando Firebase Auth...');
+        logDebug('🔥 Iniciando inicialización de Firebase...');
 
-        // Verificar que Firebase esté cargado
-        if (typeof firebase === 'undefined') {
-          throw new Error('Firebase SDK no está cargado');
+        // Verificar SDK
+        if (!checkFirebaseSDK()) {
+          throw new Error('Firebase SDK no disponible');
         }
 
         // Verificar configuración
-        if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('tu-')) {
-          throw new Error('Configuración de Firebase no válida');
+        if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('tu-') || firebaseConfig.apiKey.includes('YOUR_')) {
+          throw new Error('Configuración de Firebase inválida - actualiza tu apiKey');
         }
 
-        // Inicializar Firebase
+        logDebug('🔧 Configurando Firebase app...');
+
+        // Inicializar Firebase (solo si no existe ya)
+        let app;
         if (firebase.apps.length === 0) {
-          firebase.initializeApp(firebaseConfig);
+          app = firebase.initializeApp(firebaseConfig);
+          logDebug('✅ Firebase app inicializada');
+        } else {
+          app = firebase.apps[0];
+          logDebug('✅ Usando Firebase app existente');
         }
 
+        // Obtener servicios
         auth = firebase.auth();
         db = firebase.firestore();
 
-        // Configurar persistencia
-        await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        logDebug('🔐 Configurando Auth...');
 
-        // Test de conexión
-        await auth.signInAnonymously();
-        await auth.signOut();
+        // Configurar persistencia
+        try {
+          await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+          logDebug('✅ Persistencia configurada');
+        } catch (error) {
+          logDebug('⚠️ Error configurando persistencia:', error.message);
+        }
+
+        // Test básico de conexión
+        logDebug('🌐 Probando conexión...');
+
+        // Timeout para el test de conexión
+        const testPromise = new Promise(async (resolve, reject) => {
+          try {
+            // Intentar una operación simple
+            const testUser = await auth.signInAnonymously();
+            await auth.signOut();
+            resolve(true);
+          } catch (error) {
+            reject(error);
+          }
+        });
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout de conexión')), 10000)
+        );
+
+        await Promise.race([testPromise, timeoutPromise]);
 
         firebaseInitialized = true;
-        console.log('✅ Firebase Auth inicializado correctamente');
+        firebaseError = null;
+        logDebug('✅ Firebase inicializado correctamente');
         return true;
 
       } catch (error) {
-        console.error('❌ Error inicializando Firebase Auth:', error);
+        firebaseError = error;
+        logDebug('❌ Error inicializando Firebase:', error.message);
+
+        // Detalles adicionales del error
+        if (error.code) {
+          logDebug(`Código de error: ${error.code}`);
+        }
+
         return false;
       }
     }
@@ -465,30 +572,35 @@
       if (loginMode === 'demo') {
         connectionStatus.textContent = '🎭 Modo Demo';
         connectionStatus.className = 'connection-status status-demo';
-      } else if (isOnline && firebaseInitialized) {
-        connectionStatus.textContent = '🔥 Firebase';
+      } else if (firebaseInitialized) {
+        connectionStatus.textContent = '🔥 Firebase Conectado';
         connectionStatus.className = 'connection-status status-online';
-      } else if (isOnline) {
-        connectionStatus.textContent = '⚠️ Error Firebase';
+      } else if (firebaseError) {
+        connectionStatus.textContent = '❌ Error Firebase';
         connectionStatus.className = 'connection-status status-offline';
-      } else {
+      } else if (!isOnline) {
         connectionStatus.textContent = '📱 Sin conexión';
         connectionStatus.className = 'connection-status status-offline';
+      } else {
+        connectionStatus.textContent = '🔄 Conectando...';
+        connectionStatus.className = 'connection-status';
       }
     }
 
     // Funciones de autenticación
     async function loginWithFirebase(email, password) {
       if (!firebaseInitialized) {
-        throw new Error('Firebase no está inicializado');
+        throw new Error(`Firebase no inicializado: ${firebaseError?.message || 'Error desconocido'}`);
       }
 
       try {
-        console.log('🔐 Iniciando sesión con Firebase...');
+        logDebug(`🔐 Intentando login con email: ${email}`);
         const userCredential = await auth.signInWithEmailAndPassword(email, password);
         const user = userCredential.user;
 
-        // Obtener información adicional del usuario desde Firestore
+        logDebug('✅ Autenticación exitosa');
+
+        // Obtener información adicional del usuario
         let userData = {
           uid: user.uid,
           email: user.email,
@@ -500,9 +612,10 @@
           const userDoc = await db.collection('users').doc(user.uid).get();
           if (userDoc.exists) {
             userData = { ...userData, ...userDoc.data() };
+            logDebug('✅ Datos adicionales obtenidos de Firestore');
           }
         } catch (error) {
-          console.warn('⚠️ No se pudo obtener datos adicionales del usuario:', error);
+          logDebug('⚠️ No se pudieron obtener datos adicionales:', error.message);
         }
 
         // Guardar sesión
@@ -512,11 +625,11 @@
           loginMethod: 'firebase'
         }));
 
-        console.log('✅ Login exitoso con Firebase');
+        logDebug('✅ Sesión guardada');
         return userData;
 
       } catch (error) {
-        console.error('❌ Error en login con Firebase:', error);
+        logDebug('❌ Error en login Firebase:', error.message);
 
         // Mensajes de error más amigables
         let errorMsg = 'Error de autenticación';
@@ -534,7 +647,7 @@
             errorMsg = 'Demasiados intentos. Intenta más tarde';
             break;
           case 'auth/network-request-failed':
-            errorMsg = 'Error de conexión';
+            errorMsg = 'Error de conexión a Firebase';
             break;
           default:
             errorMsg = error.message || 'Error desconocido';
@@ -545,10 +658,11 @@
     }
 
     function loginWithDemo(username, password) {
-      console.log('🎭 Iniciando sesión en modo demo...');
+      logDebug(`🎭 Intentando login demo con usuario: ${username}`);
 
       const user = demoUsers[username.toLowerCase()];
       if (!user || user.password !== password) {
+        logDebug('❌ Credenciales demo incorrectas');
         throw new Error('Usuario o contraseña incorrectos');
       }
 
@@ -567,17 +681,17 @@
         loginMethod: 'demo'
       }));
 
-      console.log('✅ Login exitoso en modo demo');
+      logDebug('✅ Login demo exitoso');
       return userData;
     }
 
     async function registerWithFirebase(email, password) {
       if (!firebaseInitialized) {
-        throw new Error('Firebase no está inicializado');
+        throw new Error(`Firebase no inicializado: ${firebaseError?.message || 'Error desconocido'}`);
       }
 
       try {
-        console.log('📝 Registrando usuario con Firebase...');
+        logDebug(`📝 Registrando usuario: ${email}`);
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
 
@@ -591,13 +705,17 @@
           lastLogin: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        await db.collection('users').doc(user.uid).set(userData);
+        await db.collection('users').doc(user.uid).set({
+          ...userData,
+          createdAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString()
+        });
 
-        console.log('✅ Usuario registrado exitosamente');
+        logDebug('✅ Usuario registrado exitosamente');
         return userData;
 
       } catch (error) {
-        console.error('❌ Error registrando usuario:', error);
+        logDebug('❌ Error registrando usuario:', error.message);
 
         let errorMsg = 'Error en el registro';
         switch (error.code) {
@@ -627,7 +745,7 @@
         await auth.sendPasswordResetEmail(email);
         return true;
       } catch (error) {
-        console.error('❌ Error enviando reset de contraseña:', error);
+        logDebug('❌ Error enviando reset de contraseña:', error.message);
         throw new Error('No se pudo enviar el email de recuperación');
       }
     }
@@ -635,7 +753,8 @@
     function redirectToDashboard() {
       showMessage('✅ Inicio de sesión exitoso. Redirigiendo...', 'success', 0);
       setTimeout(() => {
-        window.location.href = 'dashboard.html';
+        // Verificar si existe dashboard.html, si no, mostrar mensaje
+        window.location.href = 'index.html';
       }, 1500);
     }
 
@@ -668,11 +787,11 @@
           userData = loginWithDemo(email, password);
         }
 
-        console.log('👤 Usuario autenticado:', userData);
+        logDebug('👤 Usuario autenticado:', userData);
         redirectToDashboard();
 
       } catch (error) {
-        console.error('❌ Error en login:', error);
+        logDebug('❌ Error en login:', error.message);
         showMessage(error.message);
         emailInput.classList.add('error');
         passwordInput.classList.add('error');
@@ -733,9 +852,10 @@
         loginMethod: 'guest'
       }));
 
+      logDebug('👤 Acceso como invitado');
       showMessage('✅ Accediendo como invitado...', 'success');
       setTimeout(() => {
-        window.location.href = 'dashboard.html';
+        redirectToDashboard();
       }, 1000);
     });
 
@@ -743,17 +863,18 @@
       loginForm.reset();
       hideAllMessages();
       clearInputErrors();
+      logDebug('🧹 Formulario limpiado');
     });
 
     forgotPasswordLink.addEventListener("click", async function (e) {
       e.preventDefault();
 
       if (loginMode === 'demo') {
-        alert('Usuarios demo:\n\n' +
-          '• admin / 1234\n' +
-          '• doctor / doctor123\n' +
-          '• nurse / nurse123\n' +
-          '• demo / demo');
+        alert('Usuarios demo disponibles:\n\n' +
+          '• admin / 1234 (Administrador)\n' +
+          '• doctor / doctor123 (Dr. García)\n' +
+          '• nurse / nurse123 (Enfermera López)\n' +
+          '• demo / demo (Usuario Demo)');
         return;
       }
 
@@ -773,12 +894,24 @@
     });
 
     // Toggle de modo
-    firebaseModeBtn.addEventListener("click", function () {
+    firebaseModeBtn.addEventListener("click", async function () {
       loginMode = 'firebase';
       firebaseModeBtn.classList.add('active');
       demoModeBtn.classList.remove('active');
       emailInput.type = 'email';
       emailInput.placeholder = 'doctor@hospital.com';
+
+      logDebug('🔥 Cambiando a modo Firebase');
+
+      // Intentar inicializar Firebase si no está inicializado
+      if (!firebaseInitialized) {
+        showMessage('🔄 Inicializando Firebase...', 'warning', 2000);
+        const success = await initializeFirebase();
+        if (!success) {
+          showMessage('❌ Error conectando a Firebase. Verifica tu configuración.', 'error', 6000);
+        }
+      }
+
       updateConnectionStatus();
     });
 
@@ -788,22 +921,29 @@
       firebaseModeBtn.classList.remove('active');
       emailInput.type = 'text';
       emailInput.placeholder = 'admin, doctor, nurse, demo';
+
+      logDebug('🎭 Cambiando a modo Demo');
       updateConnectionStatus();
-      showMessage('Modo demo: admin/1234, doctor/doctor123, nurse/nurse123, demo/demo', 'warning', 8000);
+      showMessage('Usuarios demo: admin/1234, doctor/doctor123, nurse/nurse123, demo/demo', 'warning', 8000);
     });
 
     // Event listeners de conectividad
     window.addEventListener('online', function () {
       isOnline = true;
+      logDebug('🌐 Conexión restaurada');
       updateConnectionStatus();
 
       if (loginMode === 'firebase' && !firebaseInitialized) {
-        setTimeout(initializeFirebase, 1000);
+        setTimeout(() => {
+          logDebug('🔄 Reintentando inicialización de Firebase...');
+          initializeFirebase();
+        }, 2000);
       }
     });
 
     window.addEventListener('offline', function () {
       isOnline = false;
+      logDebug('📱 Conexión perdida');
       updateConnectionStatus();
     });
 
@@ -819,55 +959,174 @@
 
           // Sesión válida por 24 horas
           if (hoursSinceLogin < 24) {
+            logDebug('✅ Sesión existente encontrada, redirigiendo...');
             showMessage('Ya tienes una sesión activa. Redirigiendo...', 'success');
             setTimeout(() => {
-              window.location.href = 'dashboard.html';
+              redirectToDashboard();
             }, 1500);
-            return;
+            return true;
           } else {
+            logDebug('⚠️ Sesión expirada, limpiando...');
             localStorage.removeItem('userSession');
           }
         } catch (error) {
+          logDebug('❌ Error procesando sesión existente:', error.message);
           localStorage.removeItem('userSession');
         }
       }
+      return false;
     }
 
-    // Inicialización
+    // Inicialización mejorada
     document.addEventListener('DOMContentLoaded', async function () {
-      console.log('🚀 Iniciando sistema de login...');
+      logDebug('🚀 Iniciando sistema de login...');
 
-      // Verificar sesión existente
-      checkExistingSession();
+      // Verificar sesión existente primero
+      if (checkExistingSession()) {
+        return; // Si hay sesión válida, no continuar con la inicialización
+      }
 
-      // Actualizar estado inicial
+      // Configurar estado inicial
       updateConnectionStatus();
 
-      // Intentar inicializar Firebase
-      if (loginMode === 'firebase') {
-        const connected = await initializeFirebase();
-        updateConnectionStatus();
+      // Mostrar información inicial
+      showMessage('Usuarios demo: admin/1234, doctor/doctor123, nurse/nurse123, demo/demo', 'warning', 10000);
 
-        if (!connected) {
-          showMessage('⚠️ Error conectando a Firebase - disponible modo demo', 'warning', 6000);
-        }
+      // Solo intentar inicializar Firebase si estamos en modo Firebase
+      if (loginMode === 'firebase') {
+        logDebug('🔄 Intentando inicializar Firebase en background...');
+        setTimeout(async () => {
+          const success = await initializeFirebase();
+          updateConnectionStatus();
+
+          if (!success) {
+            logDebug('❌ Firebase no disponible, usando modo demo');
+            showMessage('⚠️ Firebase no disponible - usando modo demo', 'warning', 5000);
+          }
+        }, 1000);
       }
 
-      console.log('✅ Sistema de login inicializado');
+      logDebug('✅ Sistema de login inicializado');
     });
 
-    // Función de debug global
+    // Funciones de debug globales
     window.debugLogin = function () {
-      console.log('=== LOGIN DEBUG ===');
-      console.log('Login mode:', loginMode);
-      console.log('Firebase initialized:', firebaseInitialized);
-      console.log('Online:', isOnline);
-      console.log('Demo users:', Object.keys(demoUsers));
+      console.log('=== LOGIN DEBUG INFO ===');
+      console.log('🔧 Login mode:', loginMode);
+      console.log('🔥 Firebase initialized:', firebaseInitialized);
+      console.log('❌ Firebase error:', firebaseError?.message || 'none');
+      console.log('🌐 Online:', isOnline);
+      console.log('👥 Demo users:', Object.keys(demoUsers));
+      console.log('💾 Session:', localStorage.getItem('userSession') ? 'exists' : 'none');
 
-      if (auth) {
-        console.log('Current user:', auth.currentUser);
+      if (auth && auth.currentUser) {
+        console.log('👤 Current Firebase user:', auth.currentUser.email);
+      }
+
+      console.log('=== FIREBASE CONFIG ===');
+      console.log('🔑 API Key:', firebaseConfig.apiKey ? 'configured' : 'missing');
+      console.log('🏠 Auth Domain:', firebaseConfig.authDomain);
+      console.log('📦 Project ID:', firebaseConfig.projectId);
+
+      // Mostrar panel de debug
+      toggleDebug();
+    };
+
+    // Atajos de teclado para debug
+    document.addEventListener('keydown', function (e) {
+      // Ctrl + D para debug
+      if (e.ctrlKey && e.key === 'd') {
+        e.preventDefault();
+        window.debugLogin();
+      }
+
+      // Ctrl + L para limpiar debug
+      if (e.ctrlKey && e.key === 'l') {
+        e.preventDefault();
+        if (debugContent) {
+          debugContent.innerHTML = '';
+          logDebug('🧹 Debug log limpiado');
+        }
+      }
+    });
+
+    // Test de usuarios demo rápido
+    window.testDemo = function () {
+      console.log('=== TESTING DEMO USERS ===');
+      for (const [username, userData] of Object.entries(demoUsers)) {
+        console.log(`👤 ${username} / ${userData.password} (${userData.role}) - ${userData.name}`);
       }
     };
+
+    // Test de Firebase
+    window.testFirebase = async function () {
+      console.log('=== TESTING FIREBASE ===');
+      console.log('🔍 Checking SDK...');
+
+      if (!checkFirebaseSDK()) {
+        console.log('❌ Firebase SDK not available');
+        return;
+      }
+
+      console.log('✅ Firebase SDK available');
+      console.log('🔧 Trying to initialize...');
+
+      const success = await initializeFirebase();
+      console.log(success ? '✅ Firebase initialized' : '❌ Firebase failed');
+
+      updateConnectionStatus();
+    };
+
+    // Función para crear usuario demo en Firebase (solo para desarrollo)
+    window.createDemoUserInFirebase = async function (email = 'demo@test.com', password = 'demo123') {
+      if (!firebaseInitialized) {
+        console.log('❌ Firebase not initialized');
+        return;
+      }
+
+      try {
+        console.log(`📝 Creating demo user: ${email}`);
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        await db.collection('users').doc(user.uid).set({
+          email: user.email,
+          name: 'Demo User',
+          role: 'demo',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        console.log('✅ Demo user created successfully');
+        console.log(`👤 Email: ${email}, Password: ${password}`);
+
+      } catch (error) {
+        console.log('❌ Error creating demo user:', error.message);
+      }
+    };
+
+    // Auto-focus en el campo de email al cargar
+    setTimeout(() => {
+      if (emailInput && !emailInput.value) {
+        emailInput.focus();
+      }
+    }, 500);
+
+    // Mostrar consejos según el modo
+    function showModeHelp() {
+      if (loginMode === 'demo') {
+        console.log('💡 MODO DEMO ACTIVO');
+        console.log('Usuarios disponibles:');
+        window.testDemo();
+      } else {
+        console.log('💡 MODO FIREBASE ACTIVO');
+        console.log('- Asegúrate de tener una configuración válida de Firebase');
+        console.log('- Verifica que los servicios Auth y Firestore estén habilitados');
+        console.log('- Puedes crear un usuario demo con: createDemoUserInFirebase()');
+      }
+    }
+
+    // Mostrar ayuda inicial
+    setTimeout(showModeHelp, 2000);
   </script>
 </body>
 

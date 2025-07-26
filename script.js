@@ -30,35 +30,59 @@ const mockDatabase = {
     }
 };
 
-// Inicialización de Firebase
 async function initializeFirebase() {
     if (firebaseInitialized) return true;
 
     try {
-        // Evita múltiples inicializaciones
-        if (firebase.apps.length === 0) {
+        // Verificación más robusta
+        if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
+        } else {
+            firebase.app(); // Usa instancia existente
         }
 
         db = firebase.firestore();
         storage = firebase.storage();
 
-        if (window.location.hostname.includes('vercel.app')) {
+        // AÑADIR configuración de persistencia
+        await db.enablePersistence()
+            .catch(err => {
+                console.warn("Persistencia no soportada:", err);
+            });
+
+        // Configuración especial para Vercel/GitHub
+        if (window.location.hostname.includes('vercel.app') ||
+            window.location.hostname.includes('github.io')) {
             db.settings({
-                experimentalForceLongPolling: true
+                experimentalForceLongPolling: true,
+                merge: true
             });
         }
 
-        // Verifica conexión con Firestore
+        // Prueba de conexión
         await db.collection("test").doc("test").get();
 
         firebaseInitialized = true;
-        console.log("✅ Firebase conectado correctamente");
         return true;
     } catch (error) {
-        console.error("❌ Error crítico en Firebase:", error);
+        console.error("Error en Firebase:", error);
         return false;
     }
+}
+
+async function retryFirebaseConnection(attempts = 3, delay = 2000) {
+    for (let i = 0; i < attempts; i++) {
+        showNotification(`Intentando conectar a Firebase (${i + 1}/${attempts})...`, 'info');
+
+        const connected = await initializeFirebase();
+        if (connected) return true;
+
+        if (i < attempts - 1) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+
+    return false;
 }
 
 // Funciones de utilidad
@@ -102,7 +126,7 @@ function updateConnectionStatus() {
         syncStatusEl.textContent = '✓ En línea - Firebase conectado';
         syncStatusEl.style.background = '#28a745';
     } else if (isOnline) {
-        statusEl.textContent = '⚠️ Conectado (Firebase error)';
+        statusEl.textContent = ' Conectado ';
         statusEl.className = 'status-offline';
         syncStatusEl.textContent = '⚠️ Error Firebase - Modo offline';
         syncStatusEl.style.background = '#ffc107';
@@ -797,20 +821,20 @@ document.getElementById('patientFullName').addEventListener('input', function ()
     document.getElementById('patientName').textContent = name;
 });
 
-// Event listeners para conectividad
-window.addEventListener('online', function () {
+// En el event listener 'online'
+window.addEventListener('online', async function () {
     isOnline = true;
     updateConnectionStatus();
-    showNotification('🟢 Conexión a Internet restaurada');
 
-    // Intentar reconectar Firebase si no está inicializado
     if (!firebaseInitialized && !DEMO_MODE) {
-        setTimeout(initializeFirebase, 2000);
-    }
+        const connected = await initializeFirebase(); // Usar la función principal
 
-    // Auto-sincronizar si hay datos pendientes
-    if (pendingData.length > 0) {
-        setTimeout(syncData, 3000);
+        if (connected) {
+            // Intentar sincronizar datos pendientes
+            if (pendingData.length > 0) {
+                setTimeout(syncData, 3000);
+            }
+        }
     }
 });
 
@@ -823,14 +847,6 @@ window.addEventListener('offline', function () {
 // Inicialización de la aplicación
 document.addEventListener('DOMContentLoaded', async function () {
     console.log('🚀 Iniciando Sistema de Telemedicina Rural...');
-
-    firebase.firestore().enableNetwork()
-        .then(() => console.log('Online mode enabled'))
-        .catch(err => console.log('Error enabling network:', err));
-
-    firebase.firestore().disableNetwork()
-        .then(() => console.log('Offline mode enabled'))
-        .catch(err => console.log('Error disabling network:', err));
 
     // Marcar tiempo de inicio
     window.startTime = Date.now();

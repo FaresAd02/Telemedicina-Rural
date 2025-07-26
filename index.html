@@ -2,6 +2,7 @@
 <html lang="es">
 
 <head>
+    <script src="script.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Telemedicina Rural</title>
@@ -10,7 +11,7 @@
 </head>
 
 <body>
-    <script src="script.js"></script>
+
     <div id="syncStatus" class="sync-status" style="background: #28a745;">
         ✓ Sistema iniciado
     </div>
@@ -155,11 +156,23 @@
             <!-- Controles de sistema -->
             <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 2px solid #eee;">
                 <h4 style="color: #6c757d; margin-bottom: 15px;">🔧 Controles del Sistema</h4>
-                <button class="btn" onclick="toggleDemoMode()" id="demoToggle" style="background: #6f42c1;">🎭 Activar
-                    Modo Demo</button>
-                <button class="btn" onclick="showSystemStatus()" style="background: #17a2b8;">📊 Estado del
-                    Sistema</button>
-                <button class="btn" onclick="exportData()" style="background: #28a745;">📤 Exportar Datos</button>
+
+                <button class="btn" onclick="toggleDemoMode()" id="demoToggle" style="background: #6f42c1;">
+                    🎭 Activar Modo Demo
+                </button>
+
+                <button class="btn" onclick="showSystemStatus()" style="background: #17a2b8;">
+                    📊 Estado del Sistema
+                </button>
+
+                <button class="btn" onclick="exportData()" style="background: #28a745;">
+                    📤 Exportar Datos
+                </button>
+
+                <!-- Nuevo botón Panel Médico -->
+                <button class="btn" onclick="window.location.href='dashboard.html'" style="background: #8e44ad;">
+                    🩺 Panel Médico
+                </button>
             </div>
         </div>
 
@@ -205,10 +218,9 @@
     </div>
 
     <!-- Scripts Firebase -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-storage.min.js"></script>
-
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 
 </body>
 

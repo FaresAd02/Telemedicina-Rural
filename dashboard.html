@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <title>Dashboard Médico</title>
@@ -15,7 +16,35 @@
     h1 {
       text-align: center;
       color: white;
-      margin-bottom: 40px;
+      margin-bottom: 20px;
+    }
+
+    .filtro-container {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .filtro-container label {
+      color: white;
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+
+    .filtro-container select {
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-weight: bold;
+      border: none;
+      background-color: #fff;
+      color: #333;
+      margin-left: 10px;
+      cursor: pointer;
+      transition: box-shadow 0.3s;
+    }
+
+    .filtro-container select:focus {
+      outline: none;
+      box-shadow: 0 0 5px #fff;
     }
 
     .card {
@@ -23,7 +52,7 @@
       border-radius: 16px;
       padding: 20px;
       margin: 20px auto;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       max-width: 700px;
     }
 
@@ -41,10 +70,25 @@
       margin-left: 10px;
     }
 
-    .baja { background: #d4edda; color: #155724; }
-    .media { background: #fff3cd; color: #856404; }
-    .alta { background: #f8d7da; color: #721c24; }
-    .critica { background: #dc3545; color: white; }
+    .baja {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .media {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .alta {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .critica {
+      background: #dc3545;
+      color: white;
+    }
 
     .foto {
       width: 100px;
@@ -52,7 +96,7 @@
       object-fit: cover;
       margin: 10px;
       border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     }
 
     .btn {
@@ -72,31 +116,66 @@
     }
   </style>
 </head>
+
 <body>
   <h1>👨‍⚕️ Panel Médico - Consultas Recibidas</h1>
+
+  <div class="filtro-container">
+    <label for="urgencyFilter">Filtrar por nivel de emergencia:</label>
+    <select id="urgencyFilter">
+      <option value="todas">Todas</option>
+      <option value="baja">Baja</option>
+      <option value="media">Media</option>
+      <option value="alta">Alta</option>
+      <option value="critica">Crítica</option>
+    </select>
+  </div>
+
   <div id="consultasContainer"></div>
 
   <script>
     const consultas = JSON.parse(localStorage.getItem('pendingConsultations') || '[]');
     const container = document.getElementById('consultasContainer');
+    const filtro = document.getElementById('urgencyFilter');
 
-    consultas.forEach(c => {
-      const div = document.createElement('div');
-      div.className = 'card';
+    function renderConsultas(filtroNivel) {
+      container.innerHTML = '';
 
-      div.innerHTML = `
-        <h3>${c.patient.name} <span class="tag ${c.urgencyLevel}">${c.urgencyLevel.toUpperCase()}</span></h3>
-        <p><strong>Edad:</strong> ${c.patient.age || 'N/A'} - <strong>Género:</strong> ${c.patient.gender || 'N/A'}</p>
-        <p><strong>Síntomas:</strong> ${c.symptoms}</p>
-        <p><strong>Observaciones:</strong> ${c.observations}</p>
-        <div>
-          ${c.photos.map(f => `<img class="foto" src="${f.data}" alt="${f.type}">`).join('')}
-        </div>
-        <button class="btn" onclick="alert('Función de videollamada aún no implementada')">Iniciar Videollamada</button>
-      `;
+      const filtradas = filtroNivel === 'todas'
+        ? consultas
+        : consultas.filter(c => c.urgencyLevel === filtroNivel);
 
-      container.appendChild(div);
+      if (filtradas.length === 0) {
+        container.innerHTML = `<p style="color: white; text-align: center;">No hay consultas con ese nivel de emergencia.</p>`;
+        return;
+      }
+
+      filtradas.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'card';
+
+        div.innerHTML = `
+          <h3>${c.patient.name} <span class="tag ${c.urgencyLevel}">${c.urgencyLevel.toUpperCase()}</span></h3>
+          <p><strong>Edad:</strong> ${c.patient.age || 'N/A'} - <strong>Género:</strong> ${c.patient.gender || 'N/A'}</p>
+          <p><strong>Síntomas:</strong> ${c.symptoms}</p>
+          <p><strong>Observaciones:</strong> ${c.observations}</p>
+          <div>
+            ${c.photos.map(f => `<img class="foto" src="${f.data}" alt="${f.type}">`).join('')}
+          </div>
+          <button class="btn" onclick="alert('Función de videollamada aún no implementada')">Iniciar Videollamada</button>
+        `;
+
+        container.appendChild(div);
+      });
+    }
+
+    filtro.addEventListener('change', () => {
+      renderConsultas(filtro.value);
     });
+
+    // Mostrar todas por defecto
+    renderConsultas('todas');
   </script>
 </body>
+
 </html>
