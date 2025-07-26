@@ -42,11 +42,11 @@ async function initializeFirebase() {
         db = firebase.firestore();
         storage = firebase.storage();
 
-        // Configuración especial para entornos serverless
-        db.settings({
-            experimentalForceLongPolling: true,
-            merge: true
-        });
+        if (window.location.hostname.includes('vercel.app')) {
+            db.settings({
+                experimentalForceLongPolling: true
+            });
+        }
 
         // Verifica conexión con Firestore
         await db.collection("test").doc("test").get();
