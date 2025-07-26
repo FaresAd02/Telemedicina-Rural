@@ -31,66 +31,37 @@ const mockDatabase = {
 
 // Inicialización de Firebase
 async function initializeFirebase() {
-    if (DEMO_MODE) {
-        console.log('🎭 MODO DEMO: Saltando inicialización de Firebase');
-        return false;
+    // Verificar si ya está inicializado
+    if (firebase.apps.length > 0) {
+        return firebase.app();
     }
 
     try {
-        // Verificar si Firebase está disponible
-        if (typeof firebase === 'undefined') {
-            throw new Error('Firebase SDK no está cargado');
-        }
-
-        // Inicializar Firebase si no está inicializado
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-            console.log('🔥 Firebase inicializado');
-        }
-
+        const app = firebase.initializeApp(firebaseConfig);
         db = firebase.firestore();
         storage = firebase.storage();
 
-        // Configurar persistencia offline
-        try {
-            await db.enablePersistence({ synchronizeTabs: true });
-            console.log('✅ Persistencia offline habilitada');
+        // Configuración para entornos serverless
+        if (typeof window === 'undefined') {
             db.settings({
-                cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+                experimentalForceLongPolling: true,
                 merge: true
             });
-        } catch (err) {
-            console.warn('⚠️ No se pudo habilitar persistencia:', err.code);
         }
 
-        // Test de conexión
-        const connectionTest = db.collection('_connection_test').doc('test');
-        await Promise.race([
-            connectionTest.set({
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                test: true
-            }),
-            new Promise((_, reject) => setTimeout(
-                () => reject(new Error('Firebase connection timeout')),
-                5000
-            ))
-        ]);
+        // Habilitar persistencia offline solo en cliente
+        if (typeof window !== 'undefined') {
+            await db.enablePersistence({ synchronizeTabs: true })
+                .catch(err => {
+                    console.warn('⚠️ Persistencia offline no soportada:', err);
+                });
+        }
 
-        firebaseInitialized = true;
-        console.log('✅ Firebase completamente inicializado');
-        return true;
-
+        console.log('✅ Firebase inicializado correctamente');
+        return app;
     } catch (error) {
-        // Enhanced error logging
-        console.error('❌ Firebase initialization error:', error.message);
-        if (error.code === 'failed-precondition') {
-            console.warn('⚠️ Multiple tabs open - offline persistence disabled');
-        } else if (error.code === 'unimplemented') {
-            console.warn('⚠️ Persistence not supported in this environment');
-        }
-        // Mostrar error en UI
-        showNotification('⚠️ Error de conexión - trabajando offline', 'warning');
-        return false;
+        console.error('❌ Error inicializando Firebase:', error);
+        throw error;
     }
 }
 
