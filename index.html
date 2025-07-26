@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<style src="styles.css"></style>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telemedicina Rural</title>
+    <link rel="manifest" href="manifest.json">
+
+</head>
+
+<body>
+    <script src="script.js"></script>
+    <div id="syncStatus" class="sync-status" style="background: #28a745;">
+        ✓ Sistema iniciado
+    </div>
+
+    <div class="container">
+        <div id="demoBanner" class="demo-banner" style="display: none;">
+            🎭 MODO DEMO ACTIVADO - Simulando conexión Firebase
+        </div>
+
+        <div class="header">
+            <h1>🏥 Telemedicina Rural Conectada</h1>
+            <p>Sistema de consultas médicas remotas para comunidades rurales</p>
+        </div>
+
+        <div class="status-bar">
+            <span id="connectionStatus" class="status-online">● Iniciando sistema...</span>
+            <span>Paciente: <strong id="patientName">Nuevo Paciente</strong></span>
+            <span id="pendingItems">Pendientes: 0</span>
+            <div id="statsInfo" class="stats-info">📊 Cargando estadísticas...</div>
+        </div>
+
+        <!-- Datos del Paciente -->
+        <div class="form-section">
+            <h3><span class="icon">👤</span>Información del Paciente</h3>
+            <div class="form-group">
+                <label>Nombre completo:</label>
+                <input type="text" id="patientFullName" placeholder="Ingresa el nombre del paciente">
+            </div>
+            <div class="vital-signs-grid">
+                <div class="form-group">
+                    <label>Edad:</label>
+                    <input type="number" id="age" placeholder="Años" min="0" max="120">
+                </div>
+                <div class="form-group">
+                    <label>Género:</label>
+                    <select id="gender">
+                        <option value="">Seleccionar</option>
+                        <option value="M">Masculino</option>
+                        <option value="F">Femenino</option>
+                        <option value="O">Otro</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Signos Vitales -->
+        <div class="form-section">
+            <h3><span class="icon">📊</span>Signos Vitales</h3>
+            <div class="vital-signs-grid">
+                <div class="form-group">
+                    <label>Presión Arterial (mmHg):</label>
+                    <input type="text" id="bloodPressure" placeholder="120/80" pattern="[0-9]{2,3}/[0-9]{2,3}">
+                </div>
+                <div class="form-group">
+                    <label>Temperatura (°C):</label>
+                    <input type="number" id="temperature" placeholder="36.5" step="0.1" min="30" max="45">
+                </div>
+                <div class="form-group">
+                    <label>Frecuencia Cardíaca (lpm):</label>
+                    <input type="number" id="heartRate" placeholder="72" min="30" max="200">
+                </div>
+                <div class="form-group">
+                    <label>Saturación O2 (%):</label>
+                    <input type="number" id="oxygenSat" placeholder="98" min="80" max="100">
+                </div>
+            </div>
+        </div>
+
+        <!-- Cámara y Fotos -->
+        <div class="form-section">
+            <h3><span class="icon">📸</span>Evaluación Física</h3>
+            <div class="camera-section">
+                <video id="cameraPreview" class="camera-preview" autoplay muted style="display: none;"></video>
+                <canvas id="photoCanvas" style="display: none;"></canvas>
+
+                <div>
+                    <button class="btn" onclick="startCamera()">📷 Iniciar Cámara</button>
+                    <button class="btn btn-success" onclick="takePhoto()" id="takePhotoBtn" style="display: none;">✨
+                        Tomar Foto</button>
+                    <button class="btn btn-danger" onclick="stopCamera()">⏹️ Detener</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Tipo de evaluación:</label>
+                    <select id="photoType">
+                        <option value="herida">🩹 Herida o lesión</option>
+                        <option value="erupcion">🔴 Erupción cutánea</option>
+                        <option value="laboratorio">🧪 Resultado de laboratorio</option>
+                        <option value="radiologia">📱 Imagen radiológica</option>
+                        <option value="general">👁️ Evaluación general</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="photoGallery" class="photo-gallery"></div>
+        </div>
+
+        <!-- Síntomas y Observaciones -->
+        <div class="form-section">
+            <h3><span class="icon">📝</span>Síntomas y Observaciones</h3>
+            <div class="form-group">
+                <label>Síntomas principales:</label>
+                <textarea id="symptoms" rows="3"
+                    placeholder="Describe los síntomas del paciente (dolor, fiebre, malestar, etc.)..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Observaciones del promotor de salud:</label>
+                <textarea id="observations" rows="3"
+                    placeholder="Observaciones adicionales, antecedentes relevantes, medicamentos actuales..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Nivel de urgencia:</label>
+                <select id="urgencyLevel">
+                    <option value="baja">🟢 Baja - Consulta rutinaria</option>
+                    <option value="media">🟡 Media - Requiere atención</option>
+                    <option value="alta">🟠 Alta - Urgente</option>
+                    <option value="critica">🔴 Crítica - Emergencia</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Video Consulta -->
+        <div class="form-section">
+            <h3><span class="icon">🎥</span>Consulta por Video</h3>
+            <div class="video-section">
+                <button class="btn btn-success" onclick="startVideoCall()">🎥 Iniciar Videollamada</button>
+                <button class="btn" onclick="scheduleCall()">📅 Programar Consulta</button>
+                <button class="btn btn-warning" onclick="sendEmergencyAlert()">🚨 Alerta de Emergencia</button>
+
+                <iframe id="videoFrame" style="display: none;" allow="camera; microphone"></iframe>
+            </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="form-section">
+            <div style="text-align: center;">
+                <button class="btn btn-success" onclick="saveConsultation()">💾 Guardar Consulta</button>
+                <button class="btn" onclick="syncData()" id="syncBtn">🔄 Sincronizar Datos</button>
+                <button class="btn btn-danger" onclick="clearForm()">🗑️ Limpiar Formulario</button>
+            </div>
+
+            <!-- Controles de sistema -->
+            <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 2px solid #eee;">
+                <h4 style="color: #6c757d; margin-bottom: 15px;">🔧 Controles del Sistema</h4>
+                <button class="btn" onclick="toggleDemoMode()" id="demoToggle" style="background: #6f42c1;">🎭 Activar
+                    Modo Demo</button>
+                <button class="btn" onclick="showSystemStatus()" style="background: #17a2b8;">📊 Estado del
+                    Sistema</button>
+                <button class="btn" onclick="exportData()" style="background: #28a745;">📤 Exportar Datos</button>
+            </div>
+        </div>
+
+        <div id="pendingSync" style="display: none;" class="pending-sync">
+            ⏳ <strong>Datos guardados localmente</strong><br>
+            Se sincronizarán automáticamente cuando haya conexión a Internet
+        </div>
+    </div>
+
+    <!-- Modal para programar consulta -->
+    <div id="scheduleModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>📅 Programar Consulta Médica</h3>
+            <div class="form-group">
+                <label>Fecha de la consulta:</label>
+                <input type="date" id="consultationDate">
+            </div>
+            <div class="form-group">
+                <label>Hora de la consulta:</label>
+                <input type="time" id="consultationTime">
+            </div>
+            <div class="form-group">
+                <label>Especialista solicitado:</label>
+                <select id="specialistType">
+                    <option value="general">Medicina General</option>
+                    <option value="pediatria">Pediatría</option>
+                    <option value="ginecologia">Ginecología</option>
+                    <option value="dermatologia">Dermatología</option>
+                    <option value="cardiologia">Cardiología</option>
+                    <option value="otro">Otra especialidad</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Motivo de la consulta:</label>
+                <textarea id="consultationNotes" rows="3"
+                    placeholder="Describe brevemente el motivo de la consulta..."></textarea>
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-success" onclick="confirmSchedule()">✅ Confirmar Cita</button>
+                <button class="btn btn-danger" onclick="closeScheduleModal()">❌ Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts Firebase -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-app.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-firestore.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.1/firebase-storage.min.js"></script>
+
+
+</body>
+
+</html>

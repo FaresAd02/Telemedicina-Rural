@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Médico</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: linear-gradient(to right, #667eea, #764ba2);
+      padding: 20px;
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      color: white;
+      margin-bottom: 40px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 20px;
+      margin: 20px auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      max-width: 700px;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      color: #333;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8em;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+
+    .baja { background: #d4edda; color: #155724; }
+    .media { background: #fff3cd; color: #856404; }
+    .alta { background: #f8d7da; color: #721c24; }
+    .critica { background: #dc3545; color: white; }
+
+    .foto {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      margin: 10px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .btn {
+      background: #667eea;
+      color: white;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin-top: 10px;
+    }
+
+    .btn:hover {
+      background: #5a6fdc;
+    }
+  </style>
+</head>
+<body>
+  <h1>👨‍⚕️ Panel Médico - Consultas Recibidas</h1>
+  <div id="consultasContainer"></div>
+
+  <script>
+    const consultas = JSON.parse(localStorage.getItem('pendingConsultations') || '[]');
+    const container = document.getElementById('consultasContainer');
+
+    consultas.forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'card';
+
+      div.innerHTML = `
+        <h3>${c.patient.name} <span class="tag ${c.urgencyLevel}">${c.urgencyLevel.toUpperCase()}</span></h3>
+        <p><strong>Edad:</strong> ${c.patient.age || 'N/A'} - <strong>Género:</strong> ${c.patient.gender || 'N/A'}</p>
+        <p><strong>Síntomas:</strong> ${c.symptoms}</p>
+        <p><strong>Observaciones:</strong> ${c.observations}</p>
+        <div>
+          ${c.photos.map(f => `<img class="foto" src="${f.data}" alt="${f.type}">`).join('')}
+        </div>
+        <button class="btn" onclick="alert('Función de videollamada aún no implementada')">Iniciar Videollamada</button>
+      `;
+
+      container.appendChild(div);
+    });
+  </script>
+</body>
+</html>
