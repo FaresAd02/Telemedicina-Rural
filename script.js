@@ -31,37 +31,32 @@ const mockDatabase = {
 
 // Inicialización de Firebase
 async function initializeFirebase() {
-    // Verificar si ya está inicializado
-    if (firebase.apps.length > 0) {
-        return firebase.app();
-    }
+    if (firebaseInitialized) return true;
 
     try {
-        const app = firebase.initializeApp(firebaseConfig);
+        // Evita múltiples inicializaciones
+        if (firebase.apps.length === 0) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
         db = firebase.firestore();
         storage = firebase.storage();
 
-        // Configuración para entornos serverless
-        if (typeof window === 'undefined') {
-            db.settings({
-                experimentalForceLongPolling: true,
-                merge: true
-            });
-        }
+        // Configuración especial para entornos serverless
+        db.settings({
+            experimentalForceLongPolling: true,
+            merge: true
+        });
 
-        // Habilitar persistencia offline solo en cliente
-        if (typeof window !== 'undefined') {
-            await db.enablePersistence({ synchronizeTabs: true })
-                .catch(err => {
-                    console.warn('⚠️ Persistencia offline no soportada:', err);
-                });
-        }
+        // Verifica conexión con Firestore
+        await db.collection("test").doc("test").get();
 
-        console.log('✅ Firebase inicializado correctamente');
-        return app;
+        firebaseInitialized = true;
+        console.log("✅ Firebase conectado correctamente");
+        return true;
     } catch (error) {
-        console.error('❌ Error inicializando Firebase:', error);
-        throw error;
+        console.error("❌ Error crítico en Firebase:", error);
+        return false;
     }
 }
 
